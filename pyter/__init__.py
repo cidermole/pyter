@@ -3,7 +3,9 @@ from __future__ import division, print_function
 """ Copyright (c) 2011 Hiroyuki Tanaka. All rights reserved."""
 import itertools as itrt
 from pyter import util
+from collections import namedtuple
 
+align = namedtuple('align', 'd op')
 
 def ter(inputwords, refwords):
     """Calcurate Translation Error Rate
@@ -85,17 +87,42 @@ def edit_distance(s, t):
     """It's same as the Levenshtein distance"""
     l = _gen_matrix(len(s) + 1, len(t) + 1, None)
     # init first row
-    l[0] = [x for x, _ in enumerate(l[0])]
+    l[0] = [align(x, None) for x, _ in enumerate(l[0])]
     # init first col
     for x, y in enumerate(l):
-        y[0] = x
-    # dynamic programming solution of minimum edit distance
-    # morphing 't', this becomes...
+        y[0] = align(x, None)
+
+    #
+    # Minimum edit distance dynamic programming solution
+    #
+    # for morphing 't', we use the following operations...
     for i, j in itrt.product(range(1, len(s) + 1), range(1, len(t) + 1)):
-        l[i][j] = min(l[i - 1][j] + 1, # insert
-                      l[i][j - 1] + 1, # delete
-                      l[i - 1][j - 1] + (0 if s[i - 1] == t[j - 1] else 1)) # correct or substitute
-    return l[-1][-1]
+        l[i][j] = min(align(d=l[i - 1][j].d + 1, op=3), # insert
+                      align(d=l[i][j - 1].d + 1, op=2), # delete
+                      align(d=l[i - 1][j - 1].d + (0 if s[i - 1] == t[j - 1] else 1), op=1)) # correct or substitute
+    # NOTE: op number assignment *prefers the diagonal* (substitutions)
+    # as we can only get alignments from there.
+
+    #
+    # Backtrack to obtain word alignment (now s-t. finally want hyp-ref)
+    #
+    alignment = []  # gets one entry for each position of 't'
+    i = len(s)
+    for j in range(len(t), 0, -1):
+        #op = l[i][j].op
+        #if op == 3: # insert
+        #    i -= 1
+        ## delete: stay in same col
+        #elif op == 1: # ok or subs
+        #    i -= 1
+
+        op = l[i][j].op
+        if op == 1: # ok or subs
+            alignment[0:0] = ['%d-%d' % (i-1, j-1)]
+        if op != 2: # delete: stay in same col
+            i -= 1
+
+    return (l[-1][-1].d, alignment)
 
 
 class CachedEditDistance(object):
