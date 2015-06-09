@@ -131,7 +131,7 @@ def edit_distance(s, t):
         if op == 1: # ok or subs
             # note: we do not distinguish the two here.
             # this produces more alignments potentially at the price of precision.
-            alignment[0:0] = ['%d-%d' % (wi(i-1, s[i-1]), wi(j-1, t[i-1]))]
+            alignment[0:0] = ['%d-%d' % (wi(i-1, s[i-1]), wi(j-1, t[j-1]))]
         if op != 2: # delete: stay in same col
             i -= 1
 
