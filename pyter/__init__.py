@@ -43,8 +43,11 @@ def _shift(iwords, rwords, mtd):
     pre_score = mtd(iwords)
     scores = []
     for isp, rsp, length in _findpairs(iwords, rwords):
+        # cut out the shifted sequence [isp:isp+length]
         shifted_words = iwords[:isp] + iwords[isp + length:]
+        # insert the sequence at its new home [rsp]
         shifted_words[rsp:rsp] = iwords[isp:isp + length]
+        # score the newly shifted hypothesis h' in shifted_words
         scores.append((pre_score - mtd(shifted_words), shifted_words))
     if not scores:
         return (0, iwords)
@@ -53,7 +56,11 @@ def _shift(iwords, rwords, mtd):
 
 
 def _findpairs(ws1, ws2):
-    u""" yield the tuple of (ws1_start_point, ws2_start_point, length)
+    """
+    Yield equal subsequences from two word sequences,
+    starting at any two positions.
+
+    yields the tuple of (ws1_start_point, ws2_start_point, length)
     So ws1[ws1_start_point:ws1_start_point+length] == ws2[ws2_start_point:ws2_start_point+length]
     """
     for i1, i2 in itrt.product(range(len(ws1)), range(len(ws2))):
@@ -77,13 +84,17 @@ def _gen_matrix(col_size, row_size, default=None):
 def edit_distance(s, t):
     """It's same as the Levenshtein distance"""
     l = _gen_matrix(len(s) + 1, len(t) + 1, None)
+    # init first row
     l[0] = [x for x, _ in enumerate(l[0])]
+    # init first col
     for x, y in enumerate(l):
         y[0] = x
+    # dynamic programming solution of minimum edit distance
+    # morphing 't', this becomes...
     for i, j in itrt.product(range(1, len(s) + 1), range(1, len(t) + 1)):
-        l[i][j] = min(l[i - 1][j] + 1,
-                      l[i][j - 1] + 1,
-                      l[i - 1][j - 1] + (0 if s[i - 1] == t[j - 1] else 1))
+        l[i][j] = min(l[i - 1][j] + 1, # insert
+                      l[i][j - 1] + 1, # delete
+                      l[i - 1][j - 1] + (0 if s[i - 1] == t[j - 1] else 1)) # correct or substitute
     return l[-1][-1]
 
 
