@@ -2,10 +2,15 @@
 from __future__ import division, print_function
 """ Copyright (c) 2011 Hiroyuki Tanaka. All rights reserved."""
 import itertools as itrt
-from pyter import util
+#from pyter import util # TODO
+import util
 from collections import namedtuple
 
 align = namedtuple('align', 'd op')
+word_wrap = namedtuple('word_wrap', 'w i')
+# unwrap position indexed word
+word_unwrap = lambda ww: ww.w if type(ww) is word_wrap else ww
+word_index = lambda i, ww: ww.i if type(ww) is word_wrap else i
 
 def ter(inputwords, refwords):
     """Calcurate Translation Error Rate
@@ -16,8 +21,13 @@ def ter(inputwords, refwords):
     '0.308'
     """
     inputwords, refwords = list(inputwords), list(refwords)
-    ed = CachedEditDistance(refwords)
-    return _ter(inputwords, refwords, ed)
+    #ed = CachedEditDistance(refwords)
+    wrapped_words = [word_wrap(w, i) for i, w in enumerate(inputwords)]
+    #wrapped_words_r = [word_wrap(w, i) for i, w in enumerate(refwords)]
+    #ed = NonCachedEditDistance(wrapped_words_r)
+    ed = NonCachedEditDistance(refwords)
+    #return _ter(wrapped_words, wrapped_words_r, ed)
+    return _ter(wrapped_words, refwords, ed)
 
 
 def _ter(iwords, rwords, mtd):
@@ -35,14 +45,14 @@ def _ter(iwords, rwords, mtd):
             break
         err += 1
         iwords = new_iwords
-    return (err + mtd(iwords)) / len(rwords)
+    return (err + mtd(iwords)[0]) / len(rwords)
 
 
 def _shift(iwords, rwords, mtd):
     """ Shift the phrase pair most reduce the edit_distance
     Return True shift occurred, else False.
     """
-    pre_score = mtd(iwords)
+    pre_score, alignment = mtd(iwords)
     scores = []
     for isp, rsp, length in _findpairs(iwords, rwords):
         # cut out the shifted sequence [isp:isp+length]
@@ -50,7 +60,8 @@ def _shift(iwords, rwords, mtd):
         # insert the sequence at its new home [rsp]
         shifted_words[rsp:rsp] = iwords[isp:isp + length]
         # score the newly shifted hypothesis h' in shifted_words
-        scores.append((pre_score - mtd(shifted_words), shifted_words))
+        score, alignment = mtd(shifted_words)
+        scores.append((pre_score - score, shifted_words))
     if not scores:
         return (0, iwords)
     scores.sort()
@@ -65,14 +76,16 @@ def _findpairs(ws1, ws2):
     yields the tuple of (ws1_start_point, ws2_start_point, length)
     So ws1[ws1_start_point:ws1_start_point+length] == ws2[ws2_start_point:ws2_start_point+length]
     """
+    # unwrap position indexed word
+    unw = word_unwrap
     for i1, i2 in itrt.product(range(len(ws1)), range(len(ws2))):
         if i1 == i2:
             continue  # take away if there is already in the same position
-        if ws1[i1] == ws2[i2]:
+        if unw(ws1[i1]) == unw(ws2[i2]):
             # counting
             length = 1
             for j1, j2 in itrt.izip(range(i1 + 1, len(ws1)), range(i2 + 1, len(ws2))):
-                if ws1[j1] == ws2[j2]:
+                if unw(ws1[j1]) == unw(ws2[j2]):
                     length += 1
                 else:
                     break
@@ -92,6 +105,9 @@ def edit_distance(s, t):
     for x, y in enumerate(l):
         y[0] = align(x, None)
 
+    # unwrap position indexed word
+    unw, wi = word_unwrap, word_index
+
     #
     # Minimum edit distance dynamic programming solution
     #
@@ -99,7 +115,7 @@ def edit_distance(s, t):
     for i, j in itrt.product(range(1, len(s) + 1), range(1, len(t) + 1)):
         l[i][j] = min(align(d=l[i - 1][j].d + 1, op=3), # insert
                       align(d=l[i][j - 1].d + 1, op=2), # delete
-                      align(d=l[i - 1][j - 1].d + (0 if s[i - 1] == t[j - 1] else 1), op=1)) # correct or substitute
+                      align(d=l[i - 1][j - 1].d + (0 if unw(s[i - 1]) == unw(t[j - 1]) else 1), op=1)) # correct or substitute
     # NOTE: op number assignment *prefers the diagonal* (substitutions)
     # as we can only get alignments from there.
 
@@ -118,12 +134,21 @@ def edit_distance(s, t):
 
         op = l[i][j].op
         if op == 1: # ok or subs
-            alignment[0:0] = ['%d-%d' % (i-1, j-1)]
+            # note: we do not distinguish the two here.
+            # this produces more alignments potentially at the price of precision.
+            alignment[0:0] = ['%d-%d' % (wi(i-1, s[i-1]), wi(j-1, t[i-1]))]
         if op != 2: # delete: stay in same col
             i -= 1
 
     return (l[-1][-1].d, alignment)
 
+
+class NonCachedEditDistance(object):
+    def __init__(self, rwords):
+        self.rwds = rwords
+
+    def __call__(self, iwords):
+        return edit_distance(iwords, self.rwds)
 
 class CachedEditDistance(object):
     u""" 編集距離のキャッシュ版
