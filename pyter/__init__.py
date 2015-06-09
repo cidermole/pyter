@@ -103,10 +103,10 @@ def edit_distance(s, t):
     """It's same as the Levenshtein distance"""
     l = _gen_matrix(len(s) + 1, len(t) + 1, None)
     # init first row
-    l[0] = [align(x, None) for x, _ in enumerate(l[0])]
+    l[0] = [align(x, 2) for x, _ in enumerate(l[0])]  # delete
     # init first col
     for x, y in enumerate(l):
-        y[0] = align(x, None)
+        y[0] = align(x, 3)  # insert
 
     # unwrap position indexed word
     unw, wi = word_unwrap, word_index
@@ -114,7 +114,7 @@ def edit_distance(s, t):
     #
     # Minimum edit distance dynamic programming solution
     #
-    # for morphing 't', we use the following operations...
+    # for morphing 't', we use the following operations... (note: something fishy, regarding above init ops. maybe 's'?)
     for i, j in itrt.product(range(1, len(s) + 1), range(1, len(t) + 1)):
         l[i][j] = min(align(d=l[i - 1][j].d + 1, op=3), # insert
                       align(d=l[i][j - 1].d + 1, op=2), # delete
