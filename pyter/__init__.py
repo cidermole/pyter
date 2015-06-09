@@ -24,15 +24,14 @@ def ter(inputwords, refwords):
     inputwords, refwords = list(inputwords), list(refwords)
     ed = CachedEditDistance(refwords)
     wrapped_words = [word_wrap(w, i) for i, w in enumerate(inputwords)]
-    #wrapped_words_r = [word_wrap(w, i) for i, w in enumerate(refwords)]
-    #ed = NonCachedEditDistance(wrapped_words_r)
-    #ed = NonCachedEditDistance(refwords)
-    #return _ter(wrapped_words, wrapped_words_r, ed)
-    return _ter(wrapped_words, refwords, ed)
+    return _ter(wrapped_words, refwords, ed)[0]
 
 
 def _ter(iwords, rwords, mtd):
-    """ Translation Erorr Rate core function """
+    """
+    Translation Erorr Rate core function.
+    returns a tuple: (score, alignment ['hyp-ref', 'hyp-ref', ...])
+    """
     err = 0
     nced = NonCachedEditDistance(rwords)
     # print('[I]', u' '.join(iwords))
@@ -47,7 +46,8 @@ def _ter(iwords, rwords, mtd):
             break
         err += 1
         iwords = new_iwords
-    return (err + nced(iwords)[0]) / len(rwords)
+    edit_dist = nced(iwords)
+    return ((err + edit_dist[0]) / len(rwords), edit_dist[1])
 
 
 def _shift(iwords, rwords, mtd):
@@ -127,13 +127,6 @@ def edit_distance(s, t):
     alignment = []  # gets one entry for each position of 't'
     i = len(s)
     for j in range(len(t), 0, -1):
-        #op = l[i][j].op
-        #if op == 3: # insert
-        #    i -= 1
-        ## delete: stay in same col
-        #elif op == 1: # ok or subs
-        #    i -= 1
-
         op = l[i][j].op
         if op == 1: # ok or subs
             # note: we do not distinguish the two here.
