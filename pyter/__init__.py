@@ -11,6 +11,7 @@ word_wrap = namedtuple('word_wrap', 'w i')
 # unwrap position indexed word
 word_unwrap = lambda ww: ww.w if type(ww) is word_wrap else ww
 word_index = lambda i, ww: ww.i if type(ww) is word_wrap else i
+words_unwrap = lambda wwl: [ww.w for ww in wwl]
 
 def ter(inputwords, refwords):
     """Calcurate Translation Error Rate
@@ -21,11 +22,11 @@ def ter(inputwords, refwords):
     '0.308'
     """
     inputwords, refwords = list(inputwords), list(refwords)
-    #ed = CachedEditDistance(refwords)
+    ed = CachedEditDistance(refwords)
     wrapped_words = [word_wrap(w, i) for i, w in enumerate(inputwords)]
     #wrapped_words_r = [word_wrap(w, i) for i, w in enumerate(refwords)]
     #ed = NonCachedEditDistance(wrapped_words_r)
-    ed = NonCachedEditDistance(refwords)
+    #ed = NonCachedEditDistance(refwords)
     #return _ter(wrapped_words, wrapped_words_r, ed)
     return _ter(wrapped_words, refwords, ed)
 
@@ -33,6 +34,7 @@ def ter(inputwords, refwords):
 def _ter(iwords, rwords, mtd):
     """ Translation Erorr Rate core function """
     err = 0
+    nced = NonCachedEditDistance(rwords)
     # print('[I]', u' '.join(iwords))
     # print('[R]', u' '.join(rwords))
     # print('[ED]', mtd(iwords))
@@ -45,14 +47,14 @@ def _ter(iwords, rwords, mtd):
             break
         err += 1
         iwords = new_iwords
-    return (err + mtd(iwords)[0]) / len(rwords)
+    return (err + nced(iwords)[0]) / len(rwords)
 
 
 def _shift(iwords, rwords, mtd):
     """ Shift the phrase pair most reduce the edit_distance
     Return True shift occurred, else False.
     """
-    pre_score, alignment = mtd(iwords)
+    pre_score = mtd(words_unwrap(iwords))
     scores = []
     for isp, rsp, length in _findpairs(iwords, rwords):
         # cut out the shifted sequence [isp:isp+length]
@@ -60,7 +62,7 @@ def _shift(iwords, rwords, mtd):
         # insert the sequence at its new home [rsp]
         shifted_words[rsp:rsp] = iwords[isp:isp + length]
         # score the newly shifted hypothesis h' in shifted_words
-        score, alignment = mtd(shifted_words)
+        score = mtd(words_unwrap(shifted_words))
         scores.append((pre_score - score, shifted_words))
     if not scores:
         return (0, iwords)
