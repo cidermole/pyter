@@ -4,7 +4,17 @@ pyter
 
 pyter is a simple Translation Error Rate evaluation command.
 
-Currentry under development state.
+This program implements the TER algorithm (Levenshtein = minimum edit distance, and "word sequence shifts") from the paper:
+    Snover, M., Dorr, B., Schwartz, R., Micciulla, L., & Makhoul, J. (2006, August).
+    A study of translation edit rate with targeted human annotation. In Proceedings of association for machine translation in the Americas (pp. 223-231).
+
+Original written by Hiroyuki Tanaka and released under MIT licence:
+
+https://github.com/aflc/pyter
+
+Copyright (c) 2011 Hiroyuki Tanaka. All rights reserved.
+
+Currently under development state.
 
 ============
 Installation
