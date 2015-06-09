@@ -13,7 +13,7 @@ word_unwrap = lambda ww: ww.w if type(ww) is word_wrap else ww
 word_index = lambda i, ww: ww.i if type(ww) is word_wrap else i
 words_unwrap = lambda wwl: [ww.w for ww in wwl]
 
-def ter(inputwords, refwords):
+def ter(inputwords, refwords, align=False):
     """Calcurate Translation Error Rate
     inputwords and refwords are both list object.
     >>> ref = 'SAUDI ARABIA denied THIS WEEK information published in the AMERICAN new york times'.split()
@@ -24,7 +24,8 @@ def ter(inputwords, refwords):
     inputwords, refwords = list(inputwords), list(refwords)
     ed = CachedEditDistance(refwords)
     wrapped_words = [word_wrap(w, i) for i, w in enumerate(inputwords)]
-    return _ter(wrapped_words, refwords, ed)[0]
+    score_alignment = _ter(wrapped_words, refwords, ed)
+    return score_alignment if align else score_alignment[0]
 
 
 def _ter(iwords, rwords, mtd):
@@ -219,6 +220,7 @@ def parse_args():
     parser.add_argument('-v', '--verbose', help='Show scores of each sentence.',
                         action='store_true', default=False)
     parser.add_argument('-l', '--lang', choices=['ja', 'en'], default='en', help='Language')
+    parser.add_argument('-a', '--align', default=None, help='Produce hyp-ref word alignments')
     parser.add_argument('--force-token-mode', action='store_true', default=False, help='Use a space separated word as a unit')
     return parser.parse_args()
 
@@ -235,20 +237,25 @@ def main():
         print("Error: input file has {0} lines, but reference has {1} lines.".format(len(ilines), len(rlines)))
         sys.exit(1)
     scores = []
+    falign = open(args.align, 'w') if args.align is not None else None
     for lineno, (rline, iline) in enumerate(itertools.izip(ilines, rlines), start=1):
         if args.force_token_mode:
             rline, iline = rline.split(), iline.split()
         else:
             rline, iline = util.split(rline, args.lang), util.split(iline, args.lang)
         # iline, rline are list object
-        score = ter(iline, rline)
+        score, alignment = ter(iline, rline, align=True)
+        if args.align is not None:
+            falign.write('%s\n' % ' '.join(alignment))
         scores.append(score)
         if args.verbose:
             print("Sentence {0}: {1:.4f}".format(lineno, score))
+    if args.align is not None:
+        falign.close()
     average = sum(scores) / len(scores)
     variance = sum((x - average) ** 2 for x in scores) / len(scores)
     stddev = math.sqrt(variance)
-    print("Average={0:.4f}, Variance={1:.4f}, Standard Deviatioin={2:.4f}".format(average, variance, stddev))
+    print("Average={0:.4f}, Variance={1:.4f}, Standard Deviation={2:.4f}".format(average, variance, stddev))
 
 
 if __name__ == '__main__':
