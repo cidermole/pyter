@@ -1,8 +1,10 @@
 =====
-pyter
+pyter fork
 =====
 
 pyter is a simple Translation Error Rate evaluation command.
+
+This fork adds the capability to produce monolingual word alignments between hypothesis and reference. Beware of bugs.
 
 This program implements the TER algorithm (Levenshtein = minimum edit distance, and "word sequence shifts") from the paper:
     Snover, M., Dorr, B., Schwartz, R., Micciulla, L., & Makhoul, J. (2006, August).
